@@ -10,6 +10,7 @@ let fireTexture;
 let emitter; 
 let partX = 0
 let partY = 0
+let is3DMode = true; // Flag for 3D mode
 
 const fireArray = [[217, 96, 0], [230, 106, 0], [242, 117, 0], [255, 127, 0], [255, 137, 22], [255, 148, 36], [255, 159, 49]]
 
@@ -53,6 +54,26 @@ function generateFifty(){
 
 function draw() {
     background(240);
+
+    if (is3DMode) {
+        // Handle image rotation
+        if (mouseIsPressed) {
+            let deltaX = mouseX - lastMouseX;
+            let deltaY = mouseY - lastMouseY;
+            rotationY += deltaX * 0.01;
+            rotationX -= deltaY * 0.01;
+        }
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+        
+        // Apply rotations
+        rotateX(rotationX);
+        rotateY(rotationY);
+    } else {
+        rotationX = 0;
+        rotationY = 0;
+    }
+
     //fill(0, 255, 0)
     //for webgl, https://stackoverflow.com/questions/26110959/p5-js-loadfont-function
     textSize(10)
@@ -105,6 +126,7 @@ function draw() {
     //console.log('image_y is ', image_y);  
 } 
 
+
 //mapping function from gpt 
 function drawLocations() {
     fill(255, 0, 0);
@@ -125,7 +147,7 @@ function drawLocations() {
                 let y = map(lat, mapBounds.top, mapBounds.bottom, 0, img.height);
                             
                 //run the emitter stuff 
-                emitterArray[i].vector.set(x + posX - width / 2, y + posY - height / 2)
+                emitterArray[i].vector.set(x, y)
                 emitterArray[i].run()
                 for(let j = 0; j < 2; j++){
                     emitterArray[i].addParticle()
@@ -133,7 +155,7 @@ function drawLocations() {
 
                 //apply the texture 
                 texture(fireTexture)
-                ellipse(x + posX - width / 2, y + posY - height / 2, 400, 400);
+                ellipse(x + posX - width / 2, y + posY - height / 2, 450, 450);
 
                 //console.log(`Drawing ellipse at (${x + posX - width / 2}, ${y + posY - height / 2})`);
             } 
@@ -156,12 +178,9 @@ function mousePressed(){
         let comboString = lat + ", " + lon
         let x = map(lon, mapBounds.left, mapBounds.right, 0, img.width);
         let y = map(lat, mapBounds.top, mapBounds.bottom, 0, img.height);
-        if(dist(mouseX, mouseY, x, y) < 20){
-            fill(0)
-            stroke(0)
-            text(comboString, x + 50, y, 10, 10)
+        /*if(dist(mouseX, mouseY, x, y) < 100){
             console.log('clicking')
-        }
+        }*/ 
     }
 } 
 
@@ -173,6 +192,9 @@ function keyPressed(){
     //turn off the particles to look at just the shader
     if(key == "p"){
         return 
+    }
+    if(key == "s"){
+        is3DMode = !is3DMode; 
     }
 }
 
@@ -201,19 +223,20 @@ class Emitter{
     }
 
     addParticle(){
-        this.particles.push(new Particle(this.vector.x, this.vector.y))
+        let lifespan = random(20, 50)
+        this.particles.push(new Particle(this.vector.x, this.vector.y, lifespan))
     }
 }
 
 class Particle{
-    constructor(x, y){
+    constructor(x, y, lifespan){
         this.position = createVector(x, y);
         //middle distribution 
         let vx = random(-0.5, 0.5);
         let vy = randomGaussian(-1.2, 0);
         this.velocity = createVector(vx, vy);
         this.acceleration = createVector(0, 0);
-        this.lifespan = 40.0;
+        this.lifespan = lifespan;
         this.dead = false 
     }
 
@@ -234,11 +257,14 @@ class Particle{
         noStroke();
         let x = floor(random(0, 2))
         //let x = 0
+        //from gpt asking about how to make the particles stay still 
+        let displayX = this.position.x + posX - width / 2;
+        let displayY = this.position.y + posY - height / 2;
         if(x == 0){
-            ellipse(this.position.x, this.position.y - 5, 20, 20)
+            ellipse(displayX , displayY - 5, 20, 20)
         }
         else if(x == 1){
-            rect(this.position.x - 5, this.position.y - 15, 5, 5)
+            rect(displayX  - 5, displayY - 15, 5, 5)
         }
     }
 
