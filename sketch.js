@@ -172,14 +172,14 @@ function drawLocations() {
                 let emitterY = (y + posY - height / 2) / zoomLevel;
 
                 //resetMatrix(); // Reset transformations for particles
-                //from nature of code 
-               // let dx = map(mouseX, 0, width, -0.2, 0.2);
-               // let wind = createVector(dx, 0);
-               // emitterArray.applyForce(wind);
-                emitterArray[i].vector.set(x,y); // Set the emitter position adjusted for zoom
+                //from nature of code in the draw loop
+                let dx = map(mouseX, 0, width, -0.2, 0.2);
+                let dy = map(mouseY, 0, height, -0.2, 0);
+                let windX = createVector(dx, 0);
+                let windY = createVector(0, dy);
+                emitterArray[i].vector.set(x, y)
                 emitterArray[i].run();
 
-                //emitterArray[i].vector.set(emitterX, emitterY)
                 //emitterArray[i].run()
                 
                 for(let j = 0; j < 2; j++){
@@ -197,6 +197,8 @@ function drawLocations() {
                     let coordString = lat.toString() + "," + lon.toString()
                     text(coordString, x + posX - width/2 + 50, y + posY - height/2 - 30)
                     text(c, x + posX - width/2 + 50, y + posY - height/2 - 50 )
+                    emitterArray[i].applyForce(windX);
+                    emitterArray[i].applyForce(windY);
                 }
                 //console.log(`Drawing ellipse at (${x + posX - width / 2}, ${y + posY - height / 2})`);
             } 
@@ -301,11 +303,11 @@ class Emitter{
     //https://editor.p5js.org/natureofcode/sketches/Cq4knsBaA
     // Method to add a force vector to all particles currently in the system
     applyForce(force) {
-    // Enhanced loop!!!
-    for (let particle of this.particles) {
-      particle.applyForce(force);
+        // Enhanced loop!!!
+        for (let particle of this.particles) {
+            particle.applyForce(force);
+        }
     }
-  }
 }
 
 class Particle{
@@ -357,6 +359,10 @@ class Particle{
 
     getLifespan(){
         return this.lifespan
+    }
+
+    applyForce(force) {
+        this.acceleration.add(force);
     }
 }
 
