@@ -10,9 +10,17 @@ let fireTexture;
 let emitter; 
 let partX = 0
 let partY = 0
-let is3DMode = true; // Flag for 3D mode
+let is3DMode = false; // Flag for 3D mode
+let image_x;
+let image_y;
+let zoom = 0.01
+let image_width
+let image_height 
+let zoomLevel = 1.0
 
 const fireArray = [[217, 96, 0], [230, 106, 0], [242, 117, 0], [255, 127, 0], [255, 137, 22], [255, 148, 36], [255, 159, 49]]
+let clickedArray = [] 
+let nameArray = [];
 
 //from gpt asking about mapping coordinates to california 
 const mapBounds = {
@@ -27,12 +35,15 @@ function preload() {
     table = loadTable('output.csv', 'csv', 'noHeader');
     fireShader = loadShader('fire.vert', 'fire.frag');
     newFont = loadFont('Arimo-Regular.ttf')
+    locationNames = loadStrings('locations.txt');
 }
 
 
 function setup() {
     createCanvas(2000, 2000, WEBGL);
     img.resize(img.width * 2, img.height * 2);
+    image_width = img.width 
+    image_height = img.height
     generateFifty()
     //snippet from https://itp-xstory.github.io/p5js-shaders/#/./docs/examples/shaders_to_shapes 
     fireTexture = createGraphics(2000, 2000, WEBGL);
@@ -45,6 +56,8 @@ function generateFifty(){
         let randIndex = floor(random(0, totalRows));
         if (selectedLocations.includes(randIndex) == false) {
             selectedLocations.push(randIndex);
+            nameArray.push(locationNames[randIndex])
+            clickedArray.push(false)
         }
     }
     for(let i = 0; i < 50; i++){
@@ -83,16 +96,23 @@ function draw() {
     clear();
     //https://itp-xstory.github.io/p5js-shaders/#/./docs/examples/shaders_to_shapes 
     fireTexture.shader(fireShader);
-    fireShader.setUniform("iResolution", [fireTexture.width, fireTexture.height]);
+    fireShader.setUniform("iResolution", [width, height]);
+    //fireShader.setUniform("iResolution", [fireTexture.width, fireTexture.height]);
     fireShader.setUniform('iTime', millis() / 5000.0);
     fireShader.setUniform("iFrame", frameCount);
     fireShader.setUniform("iMouse", [mouseX, map(mouseY, 0, height, height, 0)]);
     fireTexture.ellipse(0, 0, fireTexture.width, fireTexture.height);    
 
-    let image_x = posX - width / 2;
-    let image_y = posY - height / 2;
+    image_x = posX - width / 2;
+    image_y = posY - height / 2;
     
-    image(img, image_x, image_y);
+    //from gpt asking about zooming into image and making sure that the locations are scaled properly
+    //push();
+    //scale(zoomLevel); // Apply zoom
+    //image(img, image_x / zoomLevel, image_y / zoomLevel);
+    image(img, image_x, image_y)
+    drawLocations();
+    //pop();
     
     if (keyIsDown(LEFT_ARROW)) {
         posX += moveSpeed;
@@ -119,7 +139,6 @@ function draw() {
     posY = constrain(posY, minY, maxY);
 
     //background(240);
-    drawLocations();
     //console.log('position x is ', posX);
     //console.log('position y is ', posY);
     //console.log('image x is ', image_x);
@@ -133,6 +152,7 @@ function drawLocations() {
     noStroke()
     for (let i = 0; i < selectedLocations.length; i++) {
         let r = selectedLocations[i];
+        let c = nameArray[i]
         //longitude and latitude 
         let lat = table.getString(r, 0);
         let lon = table.getString(r, 1);
@@ -147,16 +167,37 @@ function drawLocations() {
                 let y = map(lat, mapBounds.top, mapBounds.bottom, 0, img.height);
                             
                 //run the emitter stuff 
-                emitterArray[i].vector.set(x, y)
-                emitterArray[i].run()
+                //addon from gpt for the zoom in 
+                let emitterX = (x + posX - width / 2) / zoomLevel;
+                let emitterY = (y + posY - height / 2) / zoomLevel;
+
+                //resetMatrix(); // Reset transformations for particles
+                //from nature of code 
+               // let dx = map(mouseX, 0, width, -0.2, 0.2);
+               // let wind = createVector(dx, 0);
+               // emitterArray.applyForce(wind);
+                emitterArray[i].vector.set(x,y); // Set the emitter position adjusted for zoom
+                emitterArray[i].run();
+
+                //emitterArray[i].vector.set(emitterX, emitterY)
+                //emitterArray[i].run()
+                
                 for(let j = 0; j < 2; j++){
                     emitterArray[i].addParticle()
                 } 
 
                 //apply the texture 
+                //resetMatrix();
                 texture(fireTexture)
                 ellipse(x + posX - width / 2, y + posY - height / 2, 450, 450);
 
+                //gpt asking about clicking on ellipse for input
+                if(clickedArray[i] == true){
+                    fill(0)
+                    let coordString = lat.toString() + "," + lon.toString()
+                    text(coordString, x + posX - width/2 + 50, y + posY - height/2 - 30)
+                    text(c, x + posX - width/2 + 50, y + posY - height/2 - 50 )
+                }
                 //console.log(`Drawing ellipse at (${x + posX - width / 2}, ${y + posY - height / 2})`);
             } 
             else {
@@ -176,26 +217,56 @@ function mousePressed(){
         let lat = table.getString(r, 0);
         let lon = table.getString(r, 1);
         let comboString = lat + ", " + lon
+        //from gpt asking about mouse clicking on location 
         let x = map(lon, mapBounds.left, mapBounds.right, 0, img.width);
         let y = map(lat, mapBounds.top, mapBounds.bottom, 0, img.height);
-        /*if(dist(mouseX, mouseY, x, y) < 100){
-            console.log('clicking')
-        }*/ 
+        let d = dist(mouseX - width / 2, mouseY - height / 2, x + posX - width / 2, y + posY - height / 2);
+        if(d < 10){
+            clickedArray[i] = !clickedArray[i];
+        }
     }
 } 
 
 //change the color of the flames with random ones 
 function keyPressed(){
-    if(key == "c"){
-        return 
-    }
-    //turn off the particles to look at just the shader
-    if(key == "p"){
-        return 
-    }
-    if(key == "s"){
+    if(key == "d"){
         is3DMode = !is3DMode; 
     }
+}
+
+//https://editor.p5js.org/mimimimimi/sketches/SOkckqY_r for image zoom using snippets 40 to 60
+function mouseWheel(){
+    /*if(is3DMode == true){
+        let scroll = -event.delta; 
+        //zooming in 
+        if(scroll > 0){
+            for(let i = 0; i < scroll; i++){
+                //maximums
+                if(scroll > 30 * width){
+                    return 
+                }
+                image_x -= zoom * (mouseX - image_x);
+                image_y -= zoom * (mouseY - image_y);
+                image_width *= zoom + 1;
+                image_height *= zoom + 1;
+            }
+        }
+        if(scroll < 0){
+            for(let i = 0; i < scroll; i++){
+                if(scroll <  width){
+                    return 
+                }
+                image_x += zoom/(zoom + 1) * (mouseX - image_x);
+                image_y += zoom/(zoom + 1) * (mouseY - image_y);
+                image_width /= zoom + 1;
+                image_height /= zoom + 1;
+            }
+        }
+    }*/
+   
+    zoomLevel -= event.delta * 0.001;
+    zoomLevel = constrain(zoomLevel, 0.5, 2.0);
+    return false 
 }
 
 //from Daniel Shiffman and the nature of code 
@@ -226,6 +297,15 @@ class Emitter{
         let lifespan = random(20, 50)
         this.particles.push(new Particle(this.vector.x, this.vector.y, lifespan))
     }
+
+    //https://editor.p5js.org/natureofcode/sketches/Cq4knsBaA
+    // Method to add a force vector to all particles currently in the system
+    applyForce(force) {
+    // Enhanced loop!!!
+    for (let particle of this.particles) {
+      particle.applyForce(force);
+    }
+  }
 }
 
 class Particle{
@@ -290,4 +370,4 @@ function getNoiseColor(x, y, colorArray) {
   
     // Retrieve and return the selected color from the array
     return colorArray[index];
-  }
+  }  
