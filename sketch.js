@@ -173,8 +173,8 @@ function drawLocations() {
 
                 //resetMatrix(); // Reset transformations for particles
                 //from nature of code in the draw loop
-                let dx = map(mouseX, 0, width, -0.2, 0.2);
-                let dy = map(mouseY, 0, height, -0.2, 0);
+                let dx = map(mouseX, 0, width, -0.5, 0.5);
+                let dy = map(mouseY, 0, height, -0.5, 0);
                 let windX = createVector(dx, 0);
                 let windY = createVector(0, dy);
                 emitterArray[i].vector.set(x, y)
